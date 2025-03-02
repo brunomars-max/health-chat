@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mental Health Chat</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <script src="https://unpkg.com/showdown/dist/showdown.min.js"></script>
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <style>
+        /* HTML: <div class="loader"></div> */
+        .loader {
+            width: 50px;
+            padding: 8px;
+            aspect-ratio: 1;
+            border-radius: 50%;
+            background: #25b09b;
+            --_m:
+                conic-gradient(#0000 10%, #000),
+                linear-gradient(#000 0 0) content-box;
+            -webkit-mask: var(--_m);
+            mask: var(--_m);
+            -webkit-mask-composite: source-out;
+            mask-composite: subtract;
+            animation: l3 1s infinite linear;
+        }
+
+        @keyframes l3 {
+            to {
+                transform: rotate(1turn)
+            }
+        }
+
+        :root {
+
+            --light-blue: #5e81a3;
+            --pure-white: #ffffff;
+            --off-white: #f8f9fa;
+            --light-gray: #e9ecef;
+            --medium-gray: #ced4da;
+            --dark-gray: #6c757d;
+            --black: #212529;
+            --border-radius-lg: 16px;
+            --border-radius-md: 12px;
+            --border-radius-sm: 8px;
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --transition: all 0.2s ease-in-out;
+        }
+
+        body {
+            font-family: "Inter", sans-serif;
+            background: var(--pure-white);
+            color: var(--black);
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            font-weight: 400;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--pure-white);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--medium-gray);
+            border-radius: 3px;
+        }
+
+        /* Navbar styles */
+        #color {
+            background-image: linear-gradient(to right, #FFF2F2, #F7CFD8);
+
+        }
+
+        #emoji {
+            height: 50px;
+            weight: 50px;
+        }
+
+        .title {
+            color: rgb(141, 79, 25);
+            transition: 0.5sec;
+        }
+
+        .title:hover {
+            color: whitesmoke;
+        }
+
+        .top-navbar {
+            background-color: var(--pure-white);
+            box-shadow: var(--shadow-sm);
+            padding: 0.75rem 2rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            height: 64px;
+        }
+
+        .navbar-brand {
+            color: var(--black);
+            font-weight: 700;
+            font-size: 1.25rem;
+            letter-spacing: -0.5px;
+        }
+
+        .navbar-menu a {
+            color: var(--off-white);
+            text-decoration: none;
+            margin-left: 24px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: var(--transition);
+            opacity: 0.7;
+        }
+
+        .navbar-menu a:hover {
+            opacity: 1;
+            color: peachpuff;
+        }
+
+        .navbar-menu a.active {
+            opacity: 1;
+            position: relative;
+        }
+
+        .navbar-menu a.active::after {
+            content: "";
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--black);
+            border-radius: 2px;
+        }
+
+        /* Left sidebar */
+        .sidebar {
+            width: 280px;
+            height: calc(100vh - 64px);
+            position: fixed;
+            left: 0;
+            top: 64px;
+            padding: 1.5rem;
+            background: var(--pure-white);
+            color: var(--black);
+            border-right: 1px solid var(--light-gray);
+            border-radius: 0 var(--border-radius-lg) 0 0;
+            z-index: 900;
+            overflow-y: auto;
+            background-image: linear-gradient(to right, #FFF2F2, #F7CFD8);
+        }
+
+        .sidebar h5 {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        .sidebar h6 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--dark-gray);
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .session-card {
+            background: var(--off-lightblue);
+            border-radius: var(--border-radius-md);
+            padding: 1rem;
+            transition: var(--transition);
+            cursor: pointer;
+            color: var(--light-blue);
+            margin-bottom: 0.75rem;
+            border: 1px solid transparent;
+            background-color: lightblue;
+        }
+
+        .session-card:hover {
+            background: var(--pure-lightblue);
+            border-color: var(--medium-lightblue);
+            box-shadow: var(--shadow-sm);
+            transform: translateY(-2px);
+        }
+
+        /* Main content area */
+        .content-wrapper {
+            margin-top: 89px;
+            display: flex;
+            height: calc(100vh - 64px);
+            background-color: #FFEAA7;
+        }
+
+        .main-content {
+            margin-left: 280px;
+            width: calc(100% - 280px - 250px);
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .chat-container-wrapper {
+            background: var(--pure-white);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-md);
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            background-color: #FFEAA7;
+        }
+
+        .chat-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--gray);
+            background: var(--pure-white);
+        }
+
+        .chat-header h5 {
+            margin: 0;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .online-indicator {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+
+        .chat-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            background-color: #B5828C;
+        }
+
+        .message {
+            display: flex;
+            margin-bottom: 0.75rem;
+            max-width: 85%;
+        }
+
+        .intro-message {
+            justify-content: center;
+            align-self: center;
+        }
+
+        .user-message {
+            justify-content: flex-end;
+            align-self: flex-end;
+
+        }
+
+        .message-content {
+            padding: 0.75rem 1rem;
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .user-message .message-content {
+            background-image: linear-gradient(to right, #235d81, #158b257e);
+            color: var(--pure-white);
+            border-bottom-right-radius: 4px;
+        }
+
+        .intro-message .message-content {
+            background: var(--black);
+            color: var(--pure-white);
+            border-bottom-right-radius: 4px;
+        }
+
+        .bot-message .message-content {
+            background-image: linear-gradient(to right, #235d81, #3e73d67e);
+            color: var(--black);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            color: var(--dark-gray);
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        .chat-input-container {
+            padding: 1rem 1.5rem;
+            background: var(--light-blue);
+            border-top: 1px solid var(--light-blue);
+        }
+
+        .input-group {
+            background: var(--off-white);
+            border-radius: 24px;
+            padding: 0.5rem 0.75rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .form-control {
+            border: none;
+            background: transparent;
+            padding: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .form-control:focus {
+            box-shadow: none;
+            outline: none;
+        }
+
+        .btn-attachment {
+            background: transparent;
+            color: var(--dark-gray);
+            border: none;
+            margin-right: 4px;
+            font-size: 1.1rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--border-radius-sm);
+            transition: var(--transition);
+        }
+
+        .btn-attachment:hover {
+            color: var(--black);
+            background: var(--light-blue);
+        }
+
+        .btn-send {
+            background: var(--black);
+            color: white;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            transition: var(--transition);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-send:hover {
+            transform: scale(1.05);
+        }
+
+        /* Right sidebar */
+        .right-sidebar {
+            width: 250px;
+            height: calc(100vh - 64px);
+            position: fixed;
+            right: 0;
+            top: 64px;
+            background: var(--light-blue);
+            border-left: 1px solid var(--dark-gray);
+            padding: 1.5rem;
+            overflow-y: auto;
+            background-image: linear-gradient(to right, #FFF2F2, #F7CFD8);
+        }
+
+        .right-sidebar h6 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--light-blue);
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .resource-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem;
+            border-radius: var(--border-radius-md);
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: var(--transition);
+            background: var(--off-white);
+        }
+
+        .resource-item:hover {
+            background: var(--dark-gray);
+        }
+
+        .resource-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--light-blue);
+            color: rgb(26, 46, 26);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 0.9rem;
+        }
+
+        .resource-text {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .mood-card {
+            padding: 0.75rem;
+            background: var(--light-blue);
+            border-radius: var(--border-radius-md);
+            margin-bottom: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mood-date {
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .mood-icon {
+            font-size: 1.25rem;
+        }
+
+        .emergency-card {
+            background: var(--light-blue);
+            border-radius: var(--border-radius-md);
+            padding: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .emergency-card p {
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .emergency-card i {
+            margin-right: 8px;
+            color: var(--light-blue);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="top-navbar d-flex justify-content-between align-items-center" id="color">
+        <a class="navbar-brand d-flex align-items-center" href="#">
+            <h1 id="emoji">☠︎︎</h1>
+            <h1 class="title">straw hat chat</h1>
+        </a>
+        <div class="navbar-menu">
+            <a href="#" class="active">Chat</a>
+            <a href="#">Sessions</a>
+            <a href="#">Resources</a>
+            <a href="#">Journal</a>
+            <a href="#"><i class="fas fa-user-circle"></i></a>
+        </div>
+    </nav>
+
+    <div class="content-wrapper">
+        <!-- Left sidebar -->
+        <div class="sidebar">
+            <h5>Welcome back</h5>
+            <p class="text-muted mb-4" style="font-size: 0.9rem">
+                This part is pending.Coming very soon
+            </p>
+
+            <h6>Available Counsellors</h6>
+            <div class="session-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-user-md me-2" style="color: var(--black)"></i>
+                        <div>
+                            <div style="font-weight: 500">
+                                Dr. Sarah Wilson
+                            </div>
+                            <div style="
+                                        font-size: 0.8rem;
+                                        color: var(--dark-gray);
+                                    ">
+                                Individual Therapy
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between mt-2" style="font-size: 0.8rem">
+                    <div>Tomorrow</div>
+                    <div>2:00 PM</div>
+                </div>
+            </div>
+
+            <h6>Your Chats</h6>
+            <div class="session-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-robot me-2" style="color: var(--black)"></i>
+                        <div>
+                            <div style="font-weight: 500">
+                                Support Assistant
+                            </div>
+                            <div style="
+                                        font-size: 0.8rem;
+                                        color: var(--dark-gray);
+                                    ">
+                                Active now
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="session-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-user-md me-2" style="color: var(--black)"></i>
+                        <div>
+                            <div style="font-weight: 500">
+                                Dr. Michael Chen
+                            </div>
+                            <div style="
+                                        font-size: 0.8rem;
+                                        color: var(--dark-gray);
+                                    ">
+                                Last message: Yesterday
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main chat area -->
+        <div class="main-content">
+            <div class="chat-container-wrapper">
+                <div class="chat-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5>
+                            <i class="fas fa-robot me-2"></i>Support
+                            Assistant
+                        </h5>
+                        <div style="
+                                    font-size: 0.8rem;
+                                    color: var(--dark-gray);
+                                ">
+                            <span class="online-indicator"></span>Online •
+                            Available 24/7
+                        </div>
+                    </div>
+                    <div>
+                        <button class="btn btn-sm" style="
+                                    background: var(--off-white);
+                                    border-radius: 50%;
+                                    width: 32px;
+                                    height: 32px;
+                                ">
+                            <i class="fas fa-ellipsis-v" style="color: var(--dark-gray)"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="chat-container" id="chat-container">
+                </div>
+
+                <div class="chat-input-container">
+                    <div class="input-group">
+                        <button class="btn-attachment">
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <input type="text" class="form-control" id="messageToSend" placeholder="Type your message..." />
+                        <button class="btn-send" onclick="detectclick()">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right sidebar -->
+        <div class="right-sidebar">
+            <h6>Helpful Resources</h6>
+
+            <a class="resource-item" target="_blank"
+                href="https://www.mentalhealth.org.uk/explore-mental-health/publications/how-manage-and-reduce-stress#paragraph-54726">
+                <div class="resource-icon">
+                    <i class="fas fa-book"></i>
+                </div>
+                <div class="resource-text">Stress Management Guide</div>
+
+            </a>
+
+            <div class="resource-item">
+                <div class="resource-icon">
+                    <i class="fas fa-heart"></i>
+                </div>
+                <div class="resource-text">Self-Care Techniques</div>
+            </div>
+
+            <a class="resource-item" target="_blank"
+                href="https://www.mentalhealth.org.uk/explore-mental-health/a-z-topics/mindfulness">
+                <div class="resource-icon">
+                    <i class="fas fa-brain"></i>
+                </div>
+                <div class="resource-text">Mindfulness Practices</div>
+            </a>
+
+            <h6 class="mt-4">Your Mood</h6>
+
+            <div class="mood-card">
+                <div class="mood-date">Today</div>
+                <div class="mood-icon">😊</div>
+            </div>
+
+            <div class="mood-card">
+                <div class="mood-date">Yesterday</div>
+                <div class="mood-icon">😐</div>
+            </div>
+
+            <div class="mood-card">
+                <div class="mood-date">Monday</div>
+                <div class="mood-icon">😔</div>
+            </div>
+
+            <div class="mood-card">
+                <div class="mood-date">Sunday</div>
+                <div class="mood-icon">🙂</div>
+            </div>
+
+            <div class="emergency-card">
+                <h6 style="
+                            text-transform: none;
+                            letter-spacing: 0;
+                            margin-bottom: 0.75rem;
+                        ">
+                    Need immediate help?
+                </h6>
+                <p><i class="fas fa-phone-alt"></i> 988 Crisis Line</p>
+                <p>
+                    <i class="fas fa-comment-dots"></i> Text HOME to 741741
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var socket = io()
+        socket.on("connect", connect)
+        function connect() {
+            console.log("CONNECTED");
+        }
+        socket.on("message", message)
+
+        function message(msg) {
+            var converter = new showdown.Converter(),
+                text = msg,
+                html = converter.makeHtml(text);
+            console.log("I RECIEVED MESSAGE", msg);
+            var container = document.getElementById("chat-container")
+            container.insertAdjacentHTML("beforeend", `    <div class="message bot-message">
+                            <div class="message-content">
+                             ${html}
+                                <div class="message-time">10:07 AM</div>
+                            </div>
+                        </div> ` )
+            container.scrollTop = container.scrollHeight
+        }
+        socket.on("disconnect", discconect)
+        function disconnect() {
+            console.log("DISCONNECTED");
+        }
+
+        function detectclick() {
+            console.log("clicked!!")
+            //todo - sent the typed message
+            var x = document.getElementById("messageToSend")
+            var TypedMessage = x.value
+            x.value = ""
+            //send message
+            socket.emit("message", TypedMessage)
+            //make my message apear
+            var container = document.getElementById("chat-container")
+            container.insertAdjacentHTML("beforeend", `    <div class="message user-message">
+                            <div class="message-content">
+                             ${TypedMessage}
+                                <div class="message-time">10:07 AM</div>
+                            </div>
+                        </div> ` )
+            container.scrollTop = container.scrollHeight
+        }
+
+    </script>
+</body>
+
+</html>
